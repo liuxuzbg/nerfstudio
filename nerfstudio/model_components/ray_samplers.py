@@ -574,7 +574,7 @@ class ProposalNetworkSampler(Sampler):
         for i_level in range(n + 1):
             is_prop = i_level < n
             num_samples = self.num_proposal_samples_per_ray[i_level] if is_prop else self.num_nerf_samples_per_ray
-            if i_level == 0:
+            if i_level == 0: # 第一次特殊处理，均匀采样
                 # Uniform sampling because we need to start with some samples
                 ray_samples = self.initial_sampler(ray_bundle, num_samples=num_samples)
             else:
@@ -582,6 +582,7 @@ class ProposalNetworkSampler(Sampler):
                 # Perform annealing to the weights. This will be a no-op if self._anneal is 1.0.
                 assert weights is not None
                 annealed_weights = torch.pow(weights, self._anneal)
+                # PDF逆密度采用
                 ray_samples = self.pdf_sampler(ray_bundle, ray_samples, annealed_weights, num_samples=num_samples)
             if is_prop:
                 if updated:
@@ -589,7 +590,7 @@ class ProposalNetworkSampler(Sampler):
                     density = density_fns[i_level](ray_samples.frustums.get_positions())
                 else:
                     with torch.no_grad():
-                        density = density_fns[i_level](ray_samples.frustums.get_positions())
+                        density = density_fns[i_level](ray_samples.frustums.get_positions()) # 关键一步
                 weights = ray_samples.get_weights(density)
                 weights_list.append(weights)  # (num_rays, num_samples)
                 ray_samples_list.append(ray_samples)
