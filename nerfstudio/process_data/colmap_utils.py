@@ -425,9 +425,10 @@ def colmap_to_json(
         rotation = qvec2rotmat(im_data.qvec)
 
         translation = im_data.tvec.reshape(3, 1)
-        w2c = np.concatenate([rotation, translation], 1)
-        w2c = np.concatenate([w2c, np.array([[0, 0, 0, 1]])], 0)
+        w2c = np.concatenate([rotation, translation], 1) # 3*4
+        w2c = np.concatenate([w2c, np.array([[0, 0, 0, 1]])], 0) # 4*4
         c2w = np.linalg.inv(w2c)
+        # 右手系转左手系
         # Convert from COLMAP's camera coordinate system (OpenCV) to ours (OpenGL)
         c2w[0:3, 1:3] *= -1
         c2w = c2w[np.array([1, 0, 2, 3]), :]
@@ -440,7 +441,7 @@ def colmap_to_json(
 
         frame = {
             "file_path": name.as_posix(),
-            "transform_matrix": c2w.tolist(),
+            "transform_matrix": c2w.tolist(), # 没有像instant-ngp那样，重新调整中心和尺度
             "colmap_im_id": im_id,
         }
         if camera_mask_path is not None:

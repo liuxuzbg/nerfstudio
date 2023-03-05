@@ -140,6 +140,7 @@ class NerfactoModel(Model):
     config: NerfactoModelConfig
 
     def populate_modules(self):
+        # 初始化模型的模块
         """Set the fields and modules."""
         super().populate_modules()
 
@@ -170,7 +171,7 @@ class NerfactoModel(Model):
         if self.config.use_same_proposal_network:
             assert len(self.config.proposal_net_args_list) == 1, "Only one proposal network is allowed."
             prop_net_args = self.config.proposal_net_args_list[0]
-            network = HashMLPDensityField(self.scene_box.aabb, spatial_distortion=scene_contraction, **prop_net_args)
+            network = HashMLPDensityField(self.scene_box.aabb, spatial_distortion=scene_contraction, **prop_net_args) #定义网络结构
             self.proposal_networks.append(network)
             self.density_fns.extend([network.density_fn for _ in range(num_prop_nets)])
         else:
@@ -263,15 +264,19 @@ class NerfactoModel(Model):
         return callbacks
 
     def get_outputs(self, ray_bundle: RayBundle):
+        #输入采样，组合populate_modules中各模块得到输出，然后用于计算loss等
+
+        # 1.proposal_sampler基于网络(HashMLPDensityField)得到density function
         ray_samples, weights_list, ray_samples_list = self.proposal_sampler(ray_bundle, density_fns=self.density_fns)
+        # 2.nerf field
         field_outputs = self.field(ray_samples, compute_normals=self.config.predict_normals)
-        weights = ray_samples.get_weights(field_outputs[FieldHeadNames.DENSITY])
+        weights = ray_samples.get_weights(field_outputs[FieldHeadNames.DENSITY]) #由density得到权重
         weights_list.append(weights)
         ray_samples_list.append(ray_samples)
 
         rgb = self.renderer_rgb(rgb=field_outputs[FieldHeadNames.RGB], weights=weights)
         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
-        accumulation = self.renderer_accumulation(weights=weights)
+        accumulation = self.renderer_accumulation(weights=weights) # 不透明度sigma累加？
 
         outputs = {
             "rgb": rgb,
@@ -286,7 +291,7 @@ class NerfactoModel(Model):
             outputs["pred_normals"] = self.normals_shader(pred_normals)
         # These use a lot of GPU memory, so we avoid storing them for eval.
         if self.training:
-            outputs["weights_list"] = weights_list
+            outputs["weights_list"] = weights_list # 用于计算loss？
             outputs["ray_samples_list"] = ray_samples_list
 
         if self.training and self.config.predict_normals:

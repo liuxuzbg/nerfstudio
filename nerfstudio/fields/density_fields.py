@@ -101,10 +101,10 @@ class HashMLPDensityField(Field):
 
     def get_density(self, ray_samples: RaySamples) -> Tuple[TensorType, None]:
         if self.spatial_distortion is not None:
-            positions = self.spatial_distortion(ray_samples.frustums.get_positions())
+            positions = self.spatial_distortion(ray_samples.frustums.get_positions()) # 处理无边界
             positions = (positions + 2.0) / 4.0
         else:
-            positions = SceneBox.get_normalized_positions(ray_samples.frustums.get_positions(), self.aabb)
+            positions = SceneBox.get_normalized_positions(ray_samples.frustums.get_positions(), self.aabb) # NDC方法？
         # Make sure the tcnn gets inputs between 0 and 1.
         selector = ((positions > 0.0) & (positions < 1.0)).all(dim=-1)
         positions = positions * selector[..., None]
@@ -114,7 +114,7 @@ class HashMLPDensityField(Field):
                 self.mlp_base(positions_flat).view(*ray_samples.frustums.shape, -1).to(positions)
             )
         else:
-            x = self.encoding(positions_flat).to(positions)
+            x = self.encoding(positions_flat).to(positions) # mlp也有encoding，直接在NetworkWithInputEncoding里
             density_before_activation = self.linear(x).view(*ray_samples.frustums.shape, -1)
 
         # Rectifying the density with an exponential is much more stable than a ReLU or
