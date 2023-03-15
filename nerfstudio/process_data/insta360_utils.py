@@ -110,7 +110,7 @@ def convert_insta360_to_images(
         run_command(back_ffmpeg_cmd, verbose=verbose)
 
         num_extracted_front_frames = len(list(image_dir.glob("frame*.png")))
-        for i, img in enumerate(image_dir.glob("back_frame_*.png")):
+        for i, img in enumerate(image_dir.glob("back_frame_*.png")): # 把back图像重命名，接到front图像后面
             img.rename(image_dir / f"frame_{i+1+num_extracted_front_frames:05d}.png")
 
     num_final_frames = len(list(image_dir.glob("*.png")))
