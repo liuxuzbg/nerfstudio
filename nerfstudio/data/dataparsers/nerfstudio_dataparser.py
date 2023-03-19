@@ -100,6 +100,7 @@ class Nerfstudio(DataParser):
             if distort_key in meta:
                 distort_fixed = True
                 break
+        # support multi camera,see nerfstudio/cameras/cameras.py
         fx = []
         fy = []
         cx = []
@@ -215,10 +216,10 @@ class Nerfstudio(DataParser):
         # Scale poses
         scale_factor = 1.0
         if self.config.auto_scale_poses:
-            scale_factor /= float(torch.max(torch.abs(poses[:, :3, 3])))
-        scale_factor *= self.config.scale_factor
+            scale_factor /= float(torch.max(torch.abs(poses[:, :3, 3]))) # 所有pose中xyz方向上极大值的倒数
+        scale_factor *= self.config.scale_factor # 从哪设置的？
 
-        poses[:, :3, 3] *= scale_factor
+        poses[:, :3, 3] *= scale_factor # scale only apply on T
 
         # Choose image_filenames and poses based on split, but after auto orient and scaling the poses.
         image_filenames = [image_filenames[i] for i in indices]
@@ -228,6 +229,7 @@ class Nerfstudio(DataParser):
 
         # in x,y,z order
         # assumes that the scene is centered at the origin
+        # 这里的aabb和instant-ngp中是一样的吗？
         aabb_scale = self.config.scene_scale
         scene_box = SceneBox(
             aabb=torch.tensor(
